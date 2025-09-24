@@ -48,18 +48,18 @@ func NewFileProcessor(workers int) *FileProcessor {
 // calculateSHA256 calculates the SHA256 hash of a single file using a memory-efficient approach
 func (fp *FileProcessor) calculateSHA256(filePath string) FileResult {
 	startTime := time.Now()
-	
+
 	result := FileResult{
 		Path: filePath,
 	}
-	
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		result.Error = fmt.Errorf("failed to open file: %w", err)
 		return result
 	}
-	defer file.Close()
-	
+	defer func() { _ = file.Close() }()
+
 	// Get file size
 	stat, err := file.Stat()
 	if err != nil {
@@ -67,13 +67,13 @@ func (fp *FileProcessor) calculateSHA256(filePath string) FileResult {
 		return result
 	}
 	result.Size = stat.Size()
-	
+
 	// Create SHA256 hasher
 	hasher := sha256.New()
-	
-	// Use a buffer to read file in chunks for memory efficiency with large files
+
+	// Use a buffer to read a file in chunks for memory efficiency with large files
 	buffer := make([]byte, bufferSize)
-	
+
 	for {
 		n, err := file.Read(buffer)
 		if n > 0 {
@@ -87,12 +87,12 @@ func (fp *FileProcessor) calculateSHA256(filePath string) FileResult {
 			return result
 		}
 	}
-	
+
 	// Get the final hash
 	hashBytes := hasher.Sum(nil)
 	result.Hash = fmt.Sprintf("%x", hashBytes)
 	result.Duration = time.Since(startTime)
-	
+
 	return result
 }
 
@@ -101,11 +101,11 @@ func (fp *FileProcessor) ProcessFiles(filePaths []string) []FileResult {
 	if len(filePaths) == 0 {
 		return []FileResult{}
 	}
-	
+
 	// Create channels for work distribution
 	jobs := make(chan string, len(filePaths))
 	results := make(chan FileResult, len(filePaths))
-	
+
 	// Start workers
 	var wg sync.WaitGroup
 	for i := 0; i < fp.workerCount; i++ {
@@ -117,7 +117,7 @@ func (fp *FileProcessor) ProcessFiles(filePaths []string) []FileResult {
 			}
 		}()
 	}
-	
+
 	// Send jobs
 	go func() {
 		for _, filePath := range filePaths {
@@ -125,19 +125,19 @@ func (fp *FileProcessor) ProcessFiles(filePaths []string) []FileResult {
 		}
 		close(jobs)
 	}()
-	
+
 	// Wait for all workers to finish
 	go func() {
 		wg.Wait()
 		close(results)
 	}()
-	
+
 	// Collect results
 	var allResults []FileResult
 	for result := range results {
 		allResults = append(allResults, result)
 	}
-	
+
 	return allResults
 }
 
@@ -147,22 +147,22 @@ func readFileList(listPath string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file list: %w", err)
 	}
-	defer file.Close()
-	
+	defer func() { _ = file.Close() }()
+
 	var files []string
 	scanner := bufio.NewScanner(file)
-	
+
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line != "" && !strings.HasPrefix(line, "#") { // Skip empty lines and comments
 			files = append(files, line)
 		}
 	}
-	
+
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("error reading file list: %w", err)
 	}
-	
+
 	return files, nil
 }
 
@@ -182,7 +182,7 @@ func formatSize(bytes int64) string {
 
 // printUsage prints the usage instructions
 func printUsage() {
-	fmt.Fprintf(os.Stderr, `Usage: %s [options] <file1> [file2] ...
+	_, _ = fmt.Fprintf(os.Stderr, `Usage: %s [options] <file1> [file2] ...
        %s [options] -list <file_list.txt>
 
 Calculate SHA256 checksums for files, optimized for large files up to 5TiB.
@@ -211,90 +211,90 @@ func main() {
 		printUsage()
 		os.Exit(1)
 	}
-	
+
 	var filePaths []string
-	var workers int = defaultWorkers
-	
+	var workers = defaultWorkers
+
 	// Parse command line arguments
 	i := 1
 	for i < len(os.Args) {
 		arg := os.Args[i]
-		
+
 		switch arg {
 		case "-h", "-help", "--help":
 			printUsage()
 			os.Exit(0)
 		case "-list":
 			if i+1 >= len(os.Args) {
-				fmt.Fprintf(os.Stderr, "Error: -list requires a file path\n")
+				_, _ = fmt.Fprintf(os.Stderr, "Error: -list requires a file path\n")
 				os.Exit(1)
 			}
 			listPath := os.Args[i+1]
 			files, err := readFileList(listPath)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error reading file list: %v\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "Error reading file list: %v\n", err)
 				os.Exit(1)
 			}
 			filePaths = append(filePaths, files...)
 			i += 2
 		case "-workers":
 			if i+1 >= len(os.Args) {
-				fmt.Fprintf(os.Stderr, "Error: -workers requires a number\n")
+				_, _ = fmt.Fprintf(os.Stderr, "Error: -workers requires a number\n")
 				os.Exit(1)
 			}
 			if _, err := fmt.Sscanf(os.Args[i+1], "%d", &workers); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: invalid worker count: %v\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "Error: invalid worker count: %v\n", err)
 				os.Exit(1)
 			}
 			if workers <= 0 {
-				fmt.Fprintf(os.Stderr, "Error: worker count must be positive\n")
+				_, _ = fmt.Fprintf(os.Stderr, "Error: worker count must be positive\n")
 				os.Exit(1)
 			}
 			i += 2
 		default:
 			if strings.HasPrefix(arg, "-") {
-				fmt.Fprintf(os.Stderr, "Error: unknown option %s\n", arg)
+				_, _ = fmt.Fprintf(os.Stderr, "Error: unknown option %s\n", arg)
 				os.Exit(1)
 			}
 			filePaths = append(filePaths, arg)
 			i++
 		}
 	}
-	
+
 	if len(filePaths) == 0 {
-		fmt.Fprintf(os.Stderr, "Error: no files specified\n")
+		_, _ = fmt.Fprintf(os.Stderr, "Error: no files specified\n")
 		printUsage()
 		os.Exit(1)
 	}
-	
+
 	// Validate that all files exist
 	var validFiles []string
 	for _, path := range filePaths {
 		if _, err := os.Stat(path); os.IsNotExist(err) {
-			fmt.Fprintf(os.Stderr, "Warning: file does not exist: %s\n", path)
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: file does not exist: %s\n", path)
 			continue
 		}
 		validFiles = append(validFiles, path)
 	}
-	
+
 	if len(validFiles) == 0 {
-		fmt.Fprintf(os.Stderr, "Error: no valid files to process\n")
+		_, _ = fmt.Fprintf(os.Stderr, "Error: no valid files to process\n")
 		os.Exit(1)
 	}
-	
-	// Create processor and calculate checksums
+
+	// Create a processor and calculate checksums
 	processor := NewFileProcessor(workers)
-	
+
 	fmt.Printf("Processing %d files with %d workers...\n\n", len(validFiles), processor.workerCount)
-	
+
 	startTime := time.Now()
 	results := processor.ProcessFiles(validFiles)
 	totalTime := time.Since(startTime)
-	
+
 	// Print results
 	var totalSize int64
 	var successCount int
-	
+
 	for _, result := range results {
 		if result.Error != nil {
 			fmt.Printf("ERROR: %s - %v\n", result.Path, result.Error)
@@ -304,7 +304,7 @@ func main() {
 			successCount++
 		}
 	}
-	
+
 	// Print summary
 	fmt.Printf("\nSummary:\n")
 	fmt.Printf("  Files processed: %d/%d\n", successCount, len(validFiles))
@@ -314,7 +314,7 @@ func main() {
 		throughput := float64(totalSize) / totalTime.Seconds() / 1024 / 1024
 		fmt.Printf("  Throughput: %.2f MB/s\n", throughput)
 	}
-	
+
 	// Exit with error code if any files failed
 	if successCount < len(validFiles) {
 		os.Exit(1)
