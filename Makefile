@@ -47,6 +47,16 @@ aix: $(BIN_DIR)
 	CGO_ENABLED=0 GOOS=aix GOARCH=ppc64 $(GO_BUILD) -o $(BIN_DIR)/$(BINARY)-aix-ppc64 .
 	@echo "Built $(BIN_DIR)/$(BINARY)-aix-ppc64"
 
+# AIX Power9-optimized build (uses POWER9 ISA via GOPPC64)
+# This target enables the Go compiler to generate POWER9-specific instructions
+# which can improve performance of crypto (e.g., SHA-2) and other primitives.
+# Not included in 'all' on purpose.
+.PHONY: aix-power9-optimized
+#aix-power9-optimized: requires Go toolchain that supports GOPPC64=power9 (Go 1.18+)
+aix-power9-optimized: $(BIN_DIR)
+	GOPPC64=power9 CGO_ENABLED=0 GOOS=aix GOARCH=ppc64 $(GO_BUILD) -o $(BIN_DIR)/$(BINARY)-aix-ppc64-p9 .
+	@echo "Built $(BIN_DIR)/$(BINARY)-aix-ppc64-p9 (POWER9-optimized)"
+
 # Build for the current host OS/ARCH
 local: $(BIN_DIR)
 	CGO_ENABLED=0 $(GO_BUILD) -o $(BIN_DIR)/$(BINARY) .
@@ -63,9 +73,10 @@ clean:
 help:
 	@echo "Usage: make <target>"
 	@echo "Targets:"
-	@echo "  all     - build linux and aix binaries into ./bin"
-	@echo "  linux   - build Linux amd64 binary into ./bin"
-	@echo "  aix     - build AIX ppc64 binary into ./bin"
-	@echo "  local   - build for the current host into ./bin"
-	@echo "  test    - run 'go test ./...'"
-	@echo "  clean   - remove ./bin directory"
+	@echo "  all                    - build linux and aix binaries into ./bin"
+	@echo "  linux                  - build Linux amd64 binary into ./bin"
+	@echo "  aix                    - build AIX ppc64 binary into ./bin"
+	@echo "  aix-power9-optimized   - build AIX ppc64 binary tuned for POWER9 (GOPPC64=power9)"
+	@echo "  local                  - build for the current host into ./bin"
+	@echo "  test                   - run 'go test ./...'"
+	@echo "  clean                  - remove ./bin directory"

@@ -118,3 +118,18 @@ go test -bench=.
 ## License
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
+
+## AIX POWER9 optimization
+
+For IBM POWER9 (AIX ppc64) there is a Makefile target that enables POWER9-specific code generation in the Go toolchain:
+
+```bash
+make aix-power9-optimized
+```
+
+This builds with environment GOPPC64=power9, allowing the compiler and standard library to use POWER9 instructions when available. In particular, Go's crypto packages may leverage vector/VSX paths (when supported by Go on AIX), which can improve SHA-2 throughput.
+
+Notes:
+- This target is not part of `make all` on purpose. Use it explicitly when building for POWER9 on AIX.
+- No cgo is used; the binary remains standalone. Additional acceleration via system libraries (e.g., OpenSSL for SHA256 or NX GZIP for compression) would require cgo and code changes.
+- If you need hardware-accelerated gzip on POWER9, consider IBM's NX GZIP (`libnxz`). Integrating it would require adding cgo wrappers and is out of scope for this project’s current pure-Go approach.
