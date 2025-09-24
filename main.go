@@ -20,6 +20,9 @@ const (
 	defaultWorkers = 4
 )
 
+// version can be injected at build time via -ldflags "-X 'main.version=...'"
+var version = "dev"
+
 // FileResult represents the result of SHA256 calculation for a single file
 type FileResult struct {
 	Path     string
@@ -190,6 +193,7 @@ Calculate SHA256 checksums for files, optimized for large files up to 5TiB.
 Options:
   -list <file>     Read file paths from a text file (one per line)
   -workers <num>   Number of concurrent workers (default: %d, max: CPU cores)
+  -v, -version     Show version and exit
   -h, -help        Show this help message
 
 Examples:
@@ -221,6 +225,9 @@ func main() {
 		arg := os.Args[i]
 
 		switch arg {
+		case "-v", "-version", "--version":
+			fmt.Println(version)
+			os.Exit(0)
 		case "-h", "-help", "--help":
 			printUsage()
 			os.Exit(0)
