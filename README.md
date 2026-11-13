@@ -8,7 +8,8 @@ A high-performance SHA256 checksum calculator written in Go, optimized for proce
 - **Multithreading**: Concurrent processing of multiple files with configurable worker count
 - **Standard Library Only**: Uses only Go standard libraries, no external C dependencies
 - **Batch Processing**: Process multiple files from a file list (newline-separated)
-- **Memory Efficient**: Uses 64KB buffer size to minimize memory usage while maintaining performance
+- **Configurable Buffer**: Uses a 64 KiB read buffer by default; configure it for the target platform
+- **Platform Benchmarking**: Compare full-file read throughput with several buffer sizes
 - **Progress Tracking**: Shows processing time, file sizes, and throughput statistics
 
 ## Installation
@@ -60,10 +61,26 @@ Process file list with custom worker count:
 ./sha256sum -workers 4 -list files.txt
 ```
 
+Set the read buffer size:
+```bash
+./sha256sum -chunk-size 1MiB large-file.iso
+```
+
+Compare buffer sizes on one or more representative files:
+```bash
+./sha256sum -benchmark large-file.iso another-large-file.iso
+```
+
+Benchmark mode reads and hashes every supplied file once per candidate size (64 KiB, 256 KiB, 1 MiB, 4 MiB, and 16 MiB). It reports per-file throughput and a combined recommendation, then uses the recommended pass's checksum results without an extra read. For very large files this can mean many additional terabytes of I/O. Later passes may benefit from the operating system cache, so results reflect the current platform and conditions rather than a guaranteed optimum. Benchmark calibration is sequential; `-workers` does not affect it.
+
+Use representative large files from the target storage: on small files, opening the file and timing overhead can dominate the measured throughput.
+
 ### Command Line Options
 
 - `-list <file>`: Read file paths from a text file (one per line)
 - `-workers <num>`: Number of concurrent workers (default: 4, max: CPU cores)
+- `-chunk-size <size>`: Read buffer size from 1 KiB to 16 MiB (default: 64 KiB; supports `KiB` and `MiB`)
+- `-benchmark`: Compare full-file reads with the built-in candidate sizes and use the best result
 - `-h`, `-help`: Show help message
 
 ## Output Format
@@ -80,7 +97,7 @@ c98c24b677eff44860afea6f493bbaec5bb1c4cbb209c6fc2bbb47f66ff2ad31  test.txt (14 B
 
 ## Performance
 
-- **Memory Usage**: Fixed 64KB buffer per worker, minimal memory footprint
+- **Memory Usage**: Configured read buffer per worker, 64 KiB by default
 - **Throughput**: Optimized for high-throughput processing (typically >1GB/s depending on storage)
 - **Scalability**: Configurable worker count for optimal CPU utilization
 
