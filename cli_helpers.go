@@ -53,7 +53,7 @@ Options:
   -workers <num>   Number of concurrent workers (default: %d)
   -chunk-size <n>  Read buffer size (e.g. 64KiB, 1MiB; default: 64KiB)
   -benchmark       Compare full-file reads using 64KiB, 256KiB, 1MiB, 4MiB, 16MiB
-                   Reads every file %d times and can cause significant I/O
+                   Requires regular files; reads each %d times and can cause significant I/O
   -v, -version     Show version and exit
   -h, -help        Show this help message
 

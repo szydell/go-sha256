@@ -71,7 +71,7 @@ Compare buffer sizes on one or more representative files:
 ./sha256sum -benchmark large-file.iso another-large-file.iso
 ```
 
-Benchmark mode reads and hashes every supplied file once per candidate size (64 KiB, 256 KiB, 1 MiB, 4 MiB, and 16 MiB). It reports per-file throughput and a combined recommendation, then uses the recommended pass's checksum results without an extra read. For very large files this can mean many additional terabytes of I/O. Later passes may benefit from the operating system cache, so results reflect the current platform and conditions rather than a guaranteed optimum. Benchmark calibration is sequential; `-workers` does not affect it.
+Benchmark mode requires regular files and reads and hashes every supplied file once per candidate size (64 KiB, 256 KiB, 1 MiB, 4 MiB, and 16 MiB). It rejects named pipes and other non-regular inputs; normal hashing can still read streams. It reports per-file throughput and a combined recommendation, then uses the recommended pass's checksum results without an extra read. For very large files this can mean many additional terabytes of I/O. Later passes may benefit from the operating system cache, so results reflect the current platform and conditions rather than a guaranteed optimum. Benchmark calibration is sequential; `-workers` does not affect it.
 
 Use representative large files from the target storage: on small files, opening the file and timing overhead can dominate the measured throughput.
 

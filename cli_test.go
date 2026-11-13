@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -33,11 +34,14 @@ func TestCLIChunkSize(t *testing.T) {
 
 func TestCLIRejectsInvalidChunkSizes(t *testing.T) {
 	testFile := writeTestFile(t, "input.txt", []byte("content"))
-	for _, chunkSize := range []string{"0", "not-a-size", "17MiB"} {
+	for _, chunkSize := range []string{"0", "-1", "not-a-size", "17MiB", "-18014398509481983KiB", "-17592186044415MiB", "-8796093022209MiB"} {
 		t.Run(chunkSize, func(t *testing.T) {
 			output, err := runCLI(t, "-chunk-size", chunkSize, testFile)
 			if err == nil {
 				t.Fatalf("expected invalid chunk size to be rejected, output: %s", output)
+			}
+			if !strings.Contains(string(output), "invalid chunk size") {
+				t.Fatalf("expected chunk size validation error, got:\n%s", output)
 			}
 		})
 	}
@@ -76,6 +80,18 @@ func TestCLIBenchmarkHashesMultipleFiles(t *testing.T) {
 	}
 }
 
+func TestBenchmarkRejectsNonRegularInputBeforeReading(t *testing.T) {
+	first := writeTestFile(t, "first.bin", []byte("first"))
+	directory := t.TempDir()
+	report, err := benchmarkFiles([]string{first, directory})
+	if err == nil || !strings.Contains(err.Error(), directory) || !strings.Contains(err.Error(), "regular file") {
+		t.Fatalf("expected non-regular input error for %s, got %v", directory, err)
+	}
+	if len(report.Files) > 0 && len(report.Files[0].Measurements) > 0 {
+		t.Fatal("benchmark read a file before validating all inputs")
+	}
+}
+
 func TestCLIRejectsBenchmarkWithChunkSize(t *testing.T) {
 	testFile := writeTestFile(t, "input.txt", []byte("content"))
 	output, err := runCLI(t, "-benchmark", "-chunk-size", "1MiB", testFile)
@@ -108,12 +124,16 @@ func TestBestBenchmarkIndexUsesAggregateElapsedTime(t *testing.T) {
 }
 
 func runCLI(t *testing.T, args ...string) ([]byte, error) {
+	return runCLIContext(t, context.Background(), args...)
+}
+
+func runCLIContext(t *testing.T, ctx context.Context, args ...string) ([]byte, error) {
 	t.Helper()
 	encodedArgs, err := json.Marshal(args)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(os.Args[0], "-test.run=^TestCLIHelper$")
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestCLIHelper$")
 	cmd.Env = append(os.Environ(),
 		"GO_SHA256_CLI_HELPER=1",
 		"GO_SHA256_CLI_ARGS="+string(encodedArgs),
