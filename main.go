@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -249,10 +250,12 @@ func main() {
 				_, _ = fmt.Fprintf(os.Stderr, "Error: -workers requires a number\n")
 				os.Exit(1)
 			}
-			if _, err := fmt.Sscanf(os.Args[i+1], "%d", &workers); err != nil {
+			parsedWorkers, err := strconv.Atoi(os.Args[i+1])
+			if err != nil {
 				_, _ = fmt.Fprintf(os.Stderr, "Error: invalid worker count: %v\n", err)
 				os.Exit(1)
 			}
+			workers = parsedWorkers
 			if workers <= 0 {
 				_, _ = fmt.Fprintf(os.Stderr, "Error: worker count must be positive\n")
 				os.Exit(1)
