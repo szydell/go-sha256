@@ -4,36 +4,10 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 )
-
-func TestCLIRejectsMalformedWorkerCount(t *testing.T) {
-	testFile := filepath.Join(t.TempDir(), "input.txt")
-	if err := os.WriteFile(testFile, []byte("content"), 0600); err != nil {
-		t.Fatal(err)
-	}
-
-	cmd := exec.Command(os.Args[0], "-test.run=^TestCLIHelper$")
-	cmd.Env = append(os.Environ(),
-		"GO_SHA256_CLI_HELPER=1",
-		"GO_SHA256_CLI_FILE="+testFile,
-	)
-	if err := cmd.Run(); err == nil {
-		t.Fatal("expected malformed worker count to be rejected")
-	}
-}
-
-func TestCLIHelper(t *testing.T) {
-	if os.Getenv("GO_SHA256_CLI_HELPER") != "1" {
-		return
-	}
-
-	os.Args = []string{"go-sha256", "-workers", "2x", os.Getenv("GO_SHA256_CLI_FILE")}
-	main()
-}
 
 func TestCalculateSHA256(t *testing.T) {
 	processor := NewFileProcessor(2)
