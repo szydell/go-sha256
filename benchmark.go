@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -50,6 +51,9 @@ func parseChunkSize(value string) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("expected a byte count with optional KiB or MiB suffix")
 	}
+	if parsed <= 0 {
+		return 0, fmt.Errorf("must be at least %s", formatChunkSize(minChunkSize))
+	}
 	if parsed > int64(maxChunkSize)/multiplier {
 		return 0, fmt.Errorf("must not exceed %s", formatChunkSize(maxChunkSize))
 	}
@@ -61,6 +65,16 @@ func parseChunkSize(value string) (int, error) {
 }
 
 func benchmarkFiles(filePaths []string) (benchmarkReport, error) {
+	for _, path := range filePaths {
+		info, err := os.Stat(path)
+		if err != nil {
+			return benchmarkReport{}, fmt.Errorf("cannot stat %q: %w", path, err)
+		}
+		if !info.Mode().IsRegular() {
+			return benchmarkReport{}, fmt.Errorf("%q is not a regular file", path)
+		}
+	}
+
 	report := benchmarkReport{
 		Files:   make([]benchmarkFileReport, len(filePaths)),
 		Results: make([]FileResult, len(filePaths)),
